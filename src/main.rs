@@ -1,28 +1,32 @@
-use rand::Rng;
-use std::cmp::Ordering;
+use axum::Extension;
+use dotenvy::dotenv;
+use tracing_subscriber;
+use tracing::{info, debug};
 
-fn main() {
-    println!("Guessing number game!");
+mod router;
+mod database;
+mod structs;
 
-    let secret_number = rand::thread_rng().gen_range(1..=100);
-    let mut guess = String::new();
+#[tokio::main]
+async fn main() -> Result<(), sqlx::Error> {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
 
-    loop {
-            
-        println!("Please input your guess.");
-        guess.clear();
-        std::io::stdin()
-            .read_line(&mut guess)
-            .expect("Failed to read line");
-        guess.pop(); // remove the newline character
+    dotenv().ok();
 
-        match guess.cmp(&secret_number.to_string()) {
-            Ordering::Less => println!("Too small"),
-            Ordering::Greater => println!("Too big"),
-            Ordering::Equal => {
-                println!("You win");
-                break;
-            }
-        }
-    }
+    let port: String = std::env::var("PORT").unwrap_or_else(|_| "3000".into());
+    
+    debug!("Database pool created successfully!");
+
+    let app = router::router().await.layer(Extension(database::load().await));
+    let server_url = format!("0.0.0.0:{}", port);
+    let listener = 
+        tokio::net::TcpListener::bind(&server_url).await.unwrap();
+
+    info!("Server running on http://{}", server_url);
+
+    axum::serve(listener, app).await.unwrap();
+
+    Ok(())
 }
