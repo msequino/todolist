@@ -3,19 +3,19 @@ use axum::{
     Router};
 mod endpoints;
 
-pub async fn router() -> Router {
+use crate::router::endpoints::posts;
+use crate::router::endpoints::users;
+
+use crate::AppState;
+
+pub fn router(state: AppState) -> Router {
     
     Router::new()
-//        .route("/actuator/health", get(endpoints::users::hello()))
-        .route("/posts/{id}", 
-    get(endpoints::posts::get_post))
-        .route("/posts", 
-    get(endpoints::posts::get_posts)
-                    .post(endpoints::posts::create_post))
-        .route("/users/{id}", 
-    get(endpoints::users::get_user))
-        .route("/users", 
-    get(endpoints::users::get_users)
-                    .post(endpoints::users::create_user))
-        
+        //.route("/actuator/health", get(endpoints::users::hello()))
+        .route("/posts/{id}", get(posts::get_post))
+        .route("/posts", get(posts::get_all).post(posts::create))
+        .route("/users/{id}", get(users::get))
+        .route("/users", get(users::get_all).post(users::create))
+        //.layer(TraceLayer::new_for_http())
+        .with_state(state)
 }
